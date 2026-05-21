@@ -113,10 +113,17 @@ TEMPLATE = r"""<!DOCTYPE html>
   h1{font-size:18px;margin:0 0 8px;display:flex;align-items:center;gap:8px;}
   h1 .grow{flex:1;}
   .iconbtn{background:var(--card);border:1px solid var(--line);color:var(--txt);
-    border-radius:8px;height:36px;min-width:36px;padding:0 9px;font-size:14px;cursor:pointer;}
-  .ovbar{height:8px;background:var(--card);border-radius:999px;overflow:hidden;margin:2px 0 4px;}
+    border-radius:8px;height:34px;min-width:34px;padding:0 8px;font-size:14px;cursor:pointer;}
+  .iconbtn.active{background:var(--accent);color:#06283d;border-color:var(--accent);}
+  .hbar{display:flex;align-items:center;gap:6px;margin-bottom:6px;}
+  .logo{font-size:16px;font-weight:800;white-space:nowrap;}
+  .grow{flex:1;}
+  .panel{display:none;background:var(--card2);border:1px solid var(--line);
+    border-radius:10px;padding:10px;margin-bottom:8px;}
+  .panel.on{display:block;}
+  .ovbar{height:6px;background:var(--card);border-radius:999px;overflow:hidden;margin:0 0 8px;}
   .ovfill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .3s;}
-  .ovnum{font-size:11.5px;color:var(--muted);margin-bottom:8px;}
+  .ovnum{font-size:11px;color:var(--muted);white-space:nowrap;}
   .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
   select,input[type=search]{background:var(--card);color:var(--txt);
     border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13px;max-width:100%;}
@@ -195,20 +202,27 @@ TEMPLATE = r"""<!DOCTYPE html>
 </head>
 <body>
 <header>
-  <h1>🎤 만능문장 연습 <span class="grow"></span>
+  <div class="hbar">
+    <span class="logo">🎤 만능문장</span>
+    <span class="ovnum" id="ovnum"></span>
+    <span class="grow"></span>
+    <button class="iconbtn" id="setBtn" title="설정·필터">⚙️</button>
     <button class="iconbtn" id="dataBtn" title="데이터 불러오기/교체">📁</button>
     <button class="iconbtn" id="themeBtn" title="테마">☀️</button>
-  </h1>
+  </div>
   <div id="hdrApp">
     <div class="ovbar"><div class="ovfill" id="ovfill"></div></div>
-    <div class="ovnum" id="ovnum"></div>
+    <div class="panel" id="settings">
+      <div class="controls">
+        <select id="voiceSel" title="목소리 선택" style="flex:1;min-width:140px;"></select>
+        <button class="tg" id="testVoice">🔊 미리듣기</button>
+        <button class="tg" id="resetBtn">암기 초기화</button>
+      </div>
+      <div class="hint" id="hint" style="margin-top:8px;">💡 가려진 글자를 탭하면 잠깐 보입니다. 체크박스로 암기 표시(자동 저장).</div>
+    </div>
     <div class="controls">
       <select id="partSel"></select>
       <input type="search" id="search" placeholder="검색 (영어/뜻/발음)">
-    </div>
-    <div class="controls" style="margin-top:8px;">
-      <select id="voiceSel" title="목소리 선택" style="flex:1;min-width:140px;"></select>
-      <button class="tg" id="testVoice">🔊 미리듣기</button>
     </div>
     <div class="modebar">
       <div class="tg active" data-mode="list">📋 목록</div>
@@ -219,9 +233,7 @@ TEMPLATE = r"""<!DOCTYPE html>
       <div class="tg" data-toggle="ko">뜻 가리기</div>
       <div class="tg" data-toggle="pron">발음 가리기</div>
       <div class="tg danger" data-toggle="onlyTodo">미암기만</div>
-      <div class="tg" id="resetBtn">암기 초기화</div>
     </div>
-    <div class="hint" id="hint">💡 가려진 글자를 탭하면 잠깐 보입니다. 체크박스로 암기 표시(자동 저장).</div>
   </div>
 </header>
 
@@ -347,8 +359,14 @@ function showApp(hasData){
   document.getElementById("loader").classList.toggle("on", !hasData);
   document.getElementById("practice").classList.toggle("on", hasData);
   document.getElementById("hdrApp").style.display = hasData ? "block" : "none";
+  document.getElementById("setBtn").style.display = hasData ? "" : "none";
+  if(!hasData){ document.getElementById("ovnum").textContent=""; document.getElementById("settings").classList.remove("on"); }
   document.getElementById("clearData").style.display = (DATA && DATA.length) ? "block" : "none";
 }
+document.getElementById("setBtn").addEventListener("click",()=>{
+  const s=document.getElementById("settings"); s.classList.toggle("on");
+  document.getElementById("setBtn").classList.toggle("active", s.classList.contains("on"));
+});
 function handleText(text){
   const parts=parseText(text);
   const err=document.getElementById("loadErr");
