@@ -241,13 +241,17 @@ TEMPLATE = r"""<!DOCTYPE html>
       <div class="loaderr" id="loadErr"></div>
       <details>
         <summary>지원하는 파일 형식 보기</summary>
-        <pre>## Part 1. 제목 (선택)
+        <pre>여러 형식을 자동 인식합니다. (제목 ## / ### 은 선택)
 
-### 섹션 제목 (선택)
-
+[A] 라벨 사용 — 불릿(* -)·볼드(**)는 있어도 없어도 됨
 * **English sentence.**
 * 뜻: 한국어 뜻
-* 발음: 한글 발음</pre>
+* 발음: 한글 발음
+
+[B] 라벨 없이 줄바꿈 — 영어 → 뜻 → 발음 순, 빈 줄로 카드 구분
+English sentence.
+한국어 뜻
+한글 발음</pre>
       </details>
       <button class="btn danger" id="clearData" style="margin-top:14px;display:none;">불러온 데이터 삭제</button>
     </div>
@@ -285,18 +289,28 @@ const LS_DONE = "tsmun_done_v1";
 
 function escapeHtml(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));}
 
-/* ---- 텍스트 파서 (build_practice.py와 동일 규칙) ---- */
+/* ---- 텍스트 파서 (여러 형식 자동 인식) ----
+   · 불릿(* -)과 볼드(**)는 있어도 없어도 됨
+   · 라벨(뜻:/발음:)이 있으면 사용, 없으면 영어줄=문장 / 이후 한글줄=뜻→발음 순 */
 function parseText(text){
   const parts=[]; let cp=null, cs=null, ci=null;
-  const push=()=>{ if(ci && ci.en){ cs.items.push(ci); } ci=null; };
-  const ensureSec=()=>{ if(!cs){ if(!cp){cp={title:"",sections:[]};parts.push(cp);} cs={title:"",items:[]}; cp.sections.push(cs);} };
+  const hasHangul=s=>/[가-힣]/.test(s);
+  const hasLatin=s=>/[A-Za-z]/.test(s);
+  function ensureSec(){ if(!cs){ if(!cp){cp={title:"",sections:[]};parts.push(cp);} cs={title:"",items:[]}; cp.sections.push(cs);} }
+  const push=()=>{ if(ci && ci.en){ ensureSec(); cs.items.push(ci); } ci=null; };
   text.split(/\r?\n/).forEach(raw=>{
-    const s=raw.trim(); let m;
-    if(s.startsWith("## ")){ push(); cp={title:s.slice(3).trim(),sections:[]}; parts.push(cp); cs=null; return; }
-    if(s.startsWith("### ")){ push(); if(!cp){cp={title:"",sections:[]};parts.push(cp);} cs={title:s.slice(4).trim(),items:[]}; cp.sections.push(cs); return; }
-    if((m=s.match(/^\*\s+\*\*(.+?)\*\*\s*$/))){ push(); ensureSec(); ci={en:m[1].trim(),ko:"",pron:""}; return; }
-    if((m=s.match(/^\*\s*뜻\s*:\s*(.*)$/)) && ci){ ci.ko=m[1].trim(); return; }
-    if((m=s.match(/^\*\s*발음\s*:\s*(.*)$/)) && ci){ ci.pron=m[1].trim(); return; }
+    let line=raw.trim(); if(!line) return; let m;
+    if(line.startsWith("### ")){ push(); if(!cp){cp={title:"",sections:[]};parts.push(cp);} cs={title:line.slice(4).trim(),items:[]}; cp.sections.push(cs); return; }
+    if(line.startsWith("## ")){ push(); cp={title:line.slice(3).trim(),sections:[]}; parts.push(cp); cs=null; return; }
+    if(line.startsWith("#")) return;
+    // **볼드**로 감싼 줄은 (한글이 섞여 있어도) 무조건 영어 문장으로 인식
+    if((m=line.match(/^(?:[-*•]\s+)?\*\*([\s\S]+?)\*\*\s*$/))){ push(); ci={en:m[1].trim(),ko:"",pron:""}; return; }
+    line=line.replace(/^[-*•]+\s*/,"").replace(/\*\*/g,"").trim(); if(!line) return;
+    if((m=line.match(/^(?:뜻|의미|해석)\s*[:：]\s*(.*)$/))){ if(!ci) ci={en:"",ko:"",pron:""}; ci.ko=m[1].trim(); return; }
+    if((m=line.match(/^(?:발음|pron(?:unciation)?)\s*[:：]\s*(.*)$/i))){ if(!ci) ci={en:"",ko:"",pron:""}; ci.pron=m[1].trim(); return; }
+    if((m=line.match(/^(?:영어|english|en)\s*[:：]\s*(.*)$/i))){ push(); ci={en:m[1].trim(),ko:"",pron:""}; return; }
+    if(hasLatin(line) && !hasHangul(line)){ push(); ci={en:line,ko:"",pron:""}; return; }
+    if(hasHangul(line)){ if(!ci) ci={en:"",ko:"",pron:""}; if(!ci.ko) ci.ko=line; else if(!ci.pron) ci.pron=line; return; }
   });
   push();
   parts.forEach(p=>p.sections=p.sections.filter(x=>x.items.length));
@@ -339,7 +353,7 @@ function handleText(text){
   const parts=parseText(text);
   const err=document.getElementById("loadErr");
   const n=parts.reduce((a,p)=>a+p.sections.reduce((b,s)=>b+s.items.length,0),0);
-  if(!n){ err.textContent="형식을 인식하지 못했습니다. '* **문장**' / '* 뜻:' / '* 발음:' 형식인지 확인하세요."; return; }
+  if(!n){ err.textContent="형식을 인식하지 못했습니다. '형식 보기'의 예시(라벨 또는 줄바꿈 묶음)를 참고하세요."; return; }
   err.textContent="";
   setData(parts, true);
 }
