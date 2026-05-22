@@ -14,6 +14,9 @@ import os
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 
+# Cloudflare 웹분석 비콘 토큰 (대시보드에서 발급). 비워두면 분석 스크립트가 삽입되지 않음.
+CF_BEACON_TOKEN = "b760110d898441849a71045aea7388a8"
+
 MANIFEST = """{
   "name": "스피킹 만능문장 연습",
   "short_name": "만능문장",
@@ -42,7 +45,7 @@ ICON = """<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewB
 </svg>
 """
 
-SW = """const CACHE = "tsmun-v3";
+SW = """const CACHE = "tsmun-v4";
 const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
@@ -67,8 +70,15 @@ self.addEventListener("fetch", e => {
 
 
 def main():
+    analytics = ""
+    if CF_BEACON_TOKEN:
+        analytics = ('<!-- Cloudflare Web Analytics -->'
+                     '<script defer src="https://static.cloudflareinsights.com/beacon.min.js" '
+                     'data-cf-beacon=\'{"token": "%s"}\'></script>'
+                     '<!-- End Cloudflare Web Analytics -->') % CF_BEACON_TOKEN
+    index_html = TEMPLATE.replace("__CF_ANALYTICS__", analytics)
     for name, content in [
-        ("index.html", TEMPLATE),
+        ("index.html", index_html),
         ("manifest.webmanifest", MANIFEST),
         ("sw.js", SW),
         ("icon.svg", ICON),
@@ -76,7 +86,7 @@ def main():
         with open(os.path.join(ROOT, name), "w", encoding="utf-8") as f:
             f.write(content)
     print("생성: index.html, manifest.webmanifest, sw.js, icon.svg")
-    print("앱에 문장 데이터는 포함되지 않습니다(업로드 방식).")
+    print("분석:", "Cloudflare 삽입됨" if CF_BEACON_TOKEN else "미삽입(토큰 없음)")
 
 
 TEMPLATE = r"""<!DOCTYPE html>
@@ -93,6 +103,7 @@ TEMPLATE = r"""<!DOCTYPE html>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon.svg">
 <link rel="icon" href="./icon.svg">
+__CF_ANALYTICS__
 <style>
   :root{
     --bg:#0f172a; --card:#1e293b; --card2:#273449; --line:#334155;
