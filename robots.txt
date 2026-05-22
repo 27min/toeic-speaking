@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://27min.github.io/toeic-speaking/sitemap.xml
