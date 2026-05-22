@@ -17,6 +17,12 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 # Cloudflare 웹분석 비콘 토큰 (대시보드에서 발급). 비워두면 분석 스크립트가 삽입되지 않음.
 CF_BEACON_TOKEN = "b760110d898441849a71045aea7388a8"
 
+# 사이트 정식 주소 (canonical / sitemap 등에 사용)
+SITE_URL = "https://27min.github.io/toeic-speaking/"
+
+# Google Search Console 인증 코드 (메타태그 방식). 비워두면 삽입 안 됨.
+GOOGLE_SITE_VERIFICATION = ""
+
 MANIFEST = """{
   "name": "스피킹 만능문장 연습",
   "short_name": "만능문장",
@@ -45,7 +51,7 @@ ICON = """<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewB
 </svg>
 """
 
-SW = """const CACHE = "tsmun-v4";
+SW = """const CACHE = "tsmun-v5";
 const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
@@ -76,17 +82,28 @@ def main():
                      '<script defer src="https://static.cloudflareinsights.com/beacon.min.js" '
                      'data-cf-beacon=\'{"token": "%s"}\'></script>'
                      '<!-- End Cloudflare Web Analytics -->') % CF_BEACON_TOKEN
-    index_html = TEMPLATE.replace("__CF_ANALYTICS__", analytics)
+    gsc = ('<meta name="google-site-verification" content="%s">' % GOOGLE_SITE_VERIFICATION) if GOOGLE_SITE_VERIFICATION else ""
+    index_html = TEMPLATE.replace("__CF_ANALYTICS__", analytics).replace("__GSC_VERIFY__", gsc)
+
+    robots = "User-agent: *\nAllow: /\nSitemap: %ssitemap.xml\n" % SITE_URL
+    sitemap = ('<?xml version="1.0" encoding="UTF-8"?>\n'
+               '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+               '  <url><loc>%s</loc><changefreq>monthly</changefreq><priority>1.0</priority></url>\n'
+               '</urlset>\n') % SITE_URL
+
     for name, content in [
         ("index.html", index_html),
         ("manifest.webmanifest", MANIFEST),
         ("sw.js", SW),
         ("icon.svg", ICON),
+        ("robots.txt", robots),
+        ("sitemap.xml", sitemap),
     ]:
         with open(os.path.join(ROOT, name), "w", encoding="utf-8") as f:
             f.write(content)
-    print("생성: index.html, manifest.webmanifest, sw.js, icon.svg")
-    print("분석:", "Cloudflare 삽입됨" if CF_BEACON_TOKEN else "미삽입(토큰 없음)")
+    print("생성: index.html, manifest.webmanifest, sw.js, icon.svg, robots.txt, sitemap.xml")
+    print("분석:", "Cloudflare 삽입됨" if CF_BEACON_TOKEN else "미삽입")
+    print("Google 인증:", "삽입됨" if GOOGLE_SITE_VERIFICATION else "미삽입(코드 없음)")
 
 
 TEMPLATE = r"""<!DOCTYPE html>
@@ -94,8 +111,20 @@ TEMPLATE = r"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>스피킹 만능문장 연습</title>
-<meta name="description" content="스피킹 만능문장 암기/발음 연습 도구 (문장은 직접 불러오기)">
+<title>토익스피킹 만능문장 연습 – 무료 암기·발음(TTS) 연습 도구</title>
+<meta name="description" content="토익스피킹(TOEIC Speaking) 만능문장을 가리기·플래시카드·원어민 발음(TTS)으로 암기 연습하는 무료 웹앱. 내 문장 파일을 불러와 Part별로 연습하고 진도를 관리하세요.">
+<link rel="canonical" href="https://27min.github.io/toeic-speaking/">
+__GSC_VERIFY__
+<meta property="og:type" content="website">
+<meta property="og:title" content="토익스피킹 만능문장 연습">
+<meta property="og:description" content="토익스피킹 만능문장을 가리기·플래시카드·발음(TTS)으로 암기 연습하는 무료 웹앱.">
+<meta property="og:url" content="https://27min.github.io/toeic-speaking/">
+<meta property="og:image" content="https://27min.github.io/toeic-speaking/icon.svg">
+<meta property="og:locale" content="ko_KR">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebApplication","name":"토익스피킹 만능문장 연습","url":"https://27min.github.io/toeic-speaking/","applicationCategory":"EducationalApplication","operatingSystem":"Web","inLanguage":"ko","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"description":"토익스피킹 만능문장을 가리기·플래시카드·발음(TTS)으로 암기 연습하는 무료 웹앱."}
+</script>
 <meta name="theme-color" content="#0f172a">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -208,6 +237,10 @@ __CF_ANALYTICS__
   .btn.danger{color:#f87171;}
   .fcprog{text-align:center;color:var(--muted);font-size:12.5px;margin-top:10px;}
   .hint{color:var(--muted);font-size:11.5px;margin-top:6px;}
+  .seo{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:13px;}
+  .seo h2{font-size:15px;color:var(--txt);margin:0 0 8px;}
+  .seo h3{font-size:13.5px;color:var(--txt);margin:16px 0 6px;}
+  .seo ul{margin:0;padding-left:18px;} .seo li{margin:3px 0;}
   ::placeholder{color:#94a3b8;}
 </style>
 </head>
@@ -304,6 +337,24 @@ English sentence.
       </div>
     </div>
   </div>
+
+  <footer class="seo">
+    <h2>토익스피킹 만능문장 연습이란?</h2>
+    <p><b>토익스피킹 만능문장 연습</b>은 토익스피킹(TOEIC Speaking) 시험에서 자주 쓰는
+    만능문장·만능표현을 효율적으로 암기하고 발음까지 익히도록 돕는 무료 웹 연습 도구입니다.
+    사진 묘사, 의견 말하기, 표 분석 등 Part 1부터 Part 7까지의 답변에 활용할 수 있는
+    문장을 직접 불러와(업로드/붙여넣기) 나만의 학습 세트로 만들 수 있습니다.</p>
+    <h3>주요 기능</h3>
+    <ul>
+      <li><b>가리기 연습</b> — 영어/뜻/발음을 가리고 떠올리며 스피킹 암기</li>
+      <li><b>플래시카드</b> — 한국어 뜻을 보고 영어 문장 말하기 연습</li>
+      <li><b>원어민 발음(TTS)</b> — 문장을 음성으로 듣고 따라 말하기</li>
+      <li><b>Part 필터·검색·진도 관리</b> — 외운 문장 체크와 진행률 확인</li>
+      <li><b>오프라인 지원(PWA)</b> — 휴대폰 홈 화면에 추가해 앱처럼 사용</li>
+    </ul>
+    <p>문장 데이터는 앱에 포함되어 있지 않으며, 불러온 내용은 서버로 전송되지 않고
+    사용하는 기기의 브라우저에만 저장됩니다.</p>
+  </footer>
 </main>
 
 <script>
